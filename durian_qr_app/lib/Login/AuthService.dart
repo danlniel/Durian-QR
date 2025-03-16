@@ -1,53 +1,53 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Login function
-  Future<User?> login(String email, String password) async {
+  /// ✅ Register a new user
+  Future<void> registerUser(String username, String password, String role) async {
     try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      return userCredential.user;
-    } catch (e) {
-      print('Login failed: $e');
-      return null;
-    }
-  }
-
-  // Register function with role
-  Future<User?> register(String email, String password, String role) async {
-    try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      // Save role in Firestore
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'email': email,
-        'role': role,  // 'admin' or 'user'
+      // WIP Hash the password before storing it
+      // Store user data in Firestore with the username as the document ID
+      await _firestore.collection('users').doc(username).set({
+        'password': password,
+        'role': role,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      return userCredential.user;
+      print('User "$username" registered successfully!');
     } catch (e) {
-      print('Registration failed: $e');
-      return null;
+      print('Error registering user: $e');
     }
   }
 
-  // Get user role
-  Future<String?> getUserRole(String uid) async {
+  /// ✅ Login user and return user details
+  Future<Map<String, dynamic>?> loginUser(String username, String password) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('users').doc(uid).get();
-      return doc['role']; // Returns 'admin' or 'user'
+      DocumentSnapshot userDoc = await _firestore.collection('users').doc(username).get();
+
+      if (!userDoc.exists) {
+        print('User not found!');
+        return null;
+      }
+
+      // Get stored hashed password
+      String storedPassword = userDoc['password'];
+
+      // Hash the input password and compare
+      if (storedPassword == password) {
+        print('Login successful!');
+
+        // Return user info excluding password
+        return {
+          'username': username,
+          'role': userDoc['role']
+        };
+      } else {
+        print('Invalid password!');
+        return null;
+      }
     } catch (e) {
-      print('Failed to get role: $e');
+      print('Error logging in: $e');
       return null;
     }
   }

@@ -2,6 +2,7 @@ import 'package:durian_qr_app/Login/AuthService.dart';
 import 'package:durian_qr_app/User/Admin/AdminDashboard.dart';
 import 'package:durian_qr_app/User/Farmer/FarmerDashboard.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,34 +12,53 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
 
-  void _login() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
+  bool _isLoading = false;
+  String? _errorMessage;
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill in all fields')),
-      );
+  /// ✅ Handles login logic and redirects users
+  Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    String username = _usernameController.text.trim();
+    String password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Username and password cannot be empty.';
+      });
       return;
     }
 
-    final user = await _authService.login(email, password);
-    if (user != null) {
-      final role = await _authService.getUserRole(user.uid);
+    Map<String, dynamic>? userInfo = await _authService.loginUser(username, password);
 
-      if (role == 'admin') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboard()));
-      } else {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const FarmerDashboard()));
-      }
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (userInfo != null) {
+      print('Login successful! User: ${userInfo['username']}, Role: ${userInfo['role']}');
+      goToDashboard(userInfo['role']);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login failed. Please check your credentials.')),
-      );
+      setState(() {
+        _errorMessage = 'Invalid username or password.';
+      });
+    }
+  }
+
+  /// ✅ Redirects user based on their role
+  void goToDashboard(String role) {
+    if (role == 'admin') {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboard()));
+    } else {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const FarmerDashboard()));
     }
   }
 
@@ -53,9 +73,9 @@ class _LoginPageState extends State<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextFormField(
-                controller: _emailController,
+                controller: _usernameController,
                 decoration: InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Nama',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),
@@ -72,16 +92,30 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // 🔹 Error message display
+              if (_errorMessage != null)
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+
+              const SizedBox(height: 16),
+
+              // 🔹 Login button with loading indicator
               ElevatedButton(
-                onPressed: _login,
+                onPressed: _isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12.0),
                   ),
                 ),
-                child: const Text(
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text(
                   'Login',
                   style: TextStyle(fontSize: 18),
                 ),
