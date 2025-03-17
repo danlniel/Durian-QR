@@ -1,23 +1,19 @@
+import 'package:durian_qr_app/History/PlantationDetailPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HistoryPlantationPage extends StatelessWidget {
-  final String qrCode;
-
-  const HistoryPlantationPage({Key? key, required this.qrCode}) : super(key: key);
+  const HistoryPlantationPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Reference to the "records" subcollection under the specific QR code document
-    CollectionReference recordsRef = FirebaseFirestore.instance
-        .collection('durian')
-        .doc(qrCode)
-        .collection('records');
+    // Query all documents in the "durian" collection.
+    CollectionReference durianRef = FirebaseFirestore.instance.collection('durian');
 
     return Scaffold(
       appBar: AppBar(title: const Text('History Plantation')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: recordsRef.orderBy('timestamp', descending: true).snapshots(),
+        stream: durianRef.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(child: Text('Error loading data'));
@@ -25,30 +21,28 @@ class HistoryPlantationPage extends StatelessWidget {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          final records = snapshot.data!.docs;
-          if (records.isEmpty) {
-            return const Center(child: Text('No records found'));
+          final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(child: Text('No plantation found'));
           }
           return ListView.builder(
-            itemCount: records.length,
+            itemCount: docs.length,
             itemBuilder: (context, index) {
-              var data = records[index].data() as Map<String, dynamic>;
-              String soilCondition = data['soilCondition'] ?? 'Unknown';
-              String weatherCondition = data['weatherCondition'] ?? 'Unknown';
-              String humidity = data['humidity'] ?? 'Unknown';
-              String temperature = data['temperature'] ?? 'Unknown';
-              // Convert Firestore Timestamp to DateTime
-              DateTime dateTime = (data['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now();
-
+              // Use the document ID as the QR code.
+              String qrCode = docs[index].id;
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 child: ListTile(
-                  title: Text('Record ${index + 1}'),
-                  subtitle: Text(
-                    'Soil: $soilCondition, Weather: $weatherCondition\n'
-                        'Humidity: $humidity, Temperature: $temperature\n'
-                        'Date: ${dateTime.toLocal()}',
-                  ),
+                  title: Text('QR Code: $qrCode'),
+                  onTap: () {
+                    // Navigate to detail page to show records for this QR code.
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PlantationDetailPage(qrCode: qrCode),
+                      ),
+                    );
+                  },
                 ),
               );
             },
