@@ -1,3 +1,4 @@
+import 'package:durian_qr_app/PlantationForm/PlantationService.dart';
 import 'package:flutter/material.dart';
 
 class PlantationForm extends StatefulWidget {
@@ -13,6 +14,9 @@ class _PlantationFormState extends State<PlantationForm> {
   final TextEditingController weatherConditionController = TextEditingController();
   final TextEditingController humidityController = TextEditingController();
   final TextEditingController temperatureController = TextEditingController();
+
+  // Create an instance of FirebaseService
+  final PlantationService firebaseService = PlantationService();
 
   @override
   Widget build(BuildContext context) {
@@ -40,9 +44,7 @@ class _PlantationFormState extends State<PlantationForm> {
               const SizedBox(height: 20),
               Center(
                 child: ElevatedButton(
-                  onPressed: () {
-                    _submitData();
-                  },
+                  onPressed: _submitData,
                   child: const Text('Submit Data'),
                 ),
               ),
@@ -66,17 +68,27 @@ class _PlantationFormState extends State<PlantationForm> {
     );
   }
 
-  void _submitData() {
-    // Example of handling the submitted data (you can send it to a server, database, etc.)
-    print('QR Code: ${widget.qrCode}');
-    print('Soil Condition: ${soilConditionController.text}');
-    print('Weather Condition: ${weatherConditionController.text}');
-    print('Humidity Level: ${humidityController.text}');
-    print('Temperature: ${temperatureController.text}');
-
-    // Show confirmation message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Plantation data submitted!')),
-    );
+  /// Handles submission of the form data by sending it to Firebase.
+  Future<void> _submitData() async {
+    try {
+      await firebaseService.postPlantationData(
+        qrCode: widget.qrCode,
+        soilCondition: soilConditionController.text,
+        weatherCondition: weatherConditionController.text,
+        humidity: humidityController.text,
+        temperature: temperatureController.text,
+      );
+      // Show confirmation message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Plantation data submitted!')),
+      );
+      // Dismiss the page after submission
+      Navigator.of(context).pop();
+    } catch (e) {
+      print('Error submitting data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error submitting data!')),
+      );
+    }
   }
 }

@@ -26,16 +26,23 @@ class _DurianQRViewState extends State<DurianQRView> {
   void _onQRViewCreated(QRViewController controller) {
     this.controller = controller;
     controller.scannedDataStream.listen((scanData) {
-      // Check if the scanned code is not null and we haven't processed any result yet
       if (scanData.code != null && scannedCode == null) {
         scannedCode = scanData.code!;
-        controller.pauseCamera(); // Stop scanning after a successful read
-        Navigator.pushReplacement(
+
+        // Add .then() to handle returning from PlantationForm
+        Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PlantationForm(qrCode: scannedCode!),
           ),
-        );
+        ).then((_) {
+          // Reset scannedCode and resume camera when returning
+          if (mounted) {
+            setState(() {
+              scannedCode = null;
+            });
+          }
+        });
       }
     });
   }
@@ -43,33 +50,16 @@ class _DurianQRViewState extends State<DurianQRView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('QR Code Scanner')),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 4,
-            child: QRView(
-              key: qrKey,
-              onQRViewCreated: _onQRViewCreated,
-              overlay: QrScannerOverlayShape(
-                borderColor: Colors.blue,
-                borderRadius: 10,
-                borderLength: 30,
-                borderWidth: 10,
-                cutOutSize: 250,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Center(
-              child: Text(
-                scannedCode == null ? 'Scanning...' : 'Scanned: $scannedCode',
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-          ),
-        ],
+      body: QRView(
+        key: qrKey,
+        onQRViewCreated: _onQRViewCreated,
+        overlay: QrScannerOverlayShape(
+          borderColor: Colors.blue,
+          borderRadius: 10,
+          borderLength: 30,
+          borderWidth: 10,
+          cutOutSize: 250,
+        ),
       ),
     );
   }
